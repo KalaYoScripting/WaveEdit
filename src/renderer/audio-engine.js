@@ -1,3 +1,35 @@
+function getPlaybackBounds() {
+  if (!state.audioBuffer) return { start: 0, end: 0 };
+  if (state.selectionStart === null || state.selectionEnd === null) {
+    return { start: 0, end: state.audioBuffer.duration };
+  }
+  const start = Math.min(state.selectionStart, state.selectionEnd);
+  const end = Math.max(state.selectionStart, state.selectionEnd);
+  if (start >= end) return { start: 0, end: state.audioBuffer.duration };
+  return { start, end };
+}
+
+function hasActiveSelection() {
+  if (state.selectionStart === null || state.selectionEnd === null) return false;
+  return Math.min(state.selectionStart, state.selectionEnd) < Math.max(state.selectionStart, state.selectionEnd);
+}
+
+function clampToPlaybackBounds(t) {
+  const bounds = getPlaybackBounds();
+  return Math.max(bounds.start, Math.min(t, bounds.end));
+}
+
+function finishPlayback(atTime, message) {
+  state.isPlaying = false;
+  state.pausedAt = atTime;
+  state.currentTime = atTime;
+  document.getElementById('currentTime').textContent = formatTime(atTime);
+  updatePlayhead();
+  showPlayIcon();
+  setStatus('ready', message);
+  cancelAnimationFrame(state.animFrame);
+}
+
 // ===================== PLAYBACK =====================
 function togglePlay() {
   if (!state.audioBuffer) { notify('No file', 'Open an audio file first.'); return; }
@@ -8,7 +40,6 @@ function togglePlay() {
 function playAudio() {
   const ctx = getAudioCtx();
   if (ctx.state === 'suspended') ctx.resume();
-
   if (state.audioSource) { try { state.audioSource.stop(); } catch (e) {} }
 
   state.gainNode = ctx.createGain();
@@ -24,17 +55,31 @@ function playAudio() {
   state.gainNode.connect(state.analyser);
   state.analyser.connect(ctx.destination);
 
-  const offset = state.pausedAt;
+  const bounds = getPlaybackBounds();
+  let offset = clampToPlaybackBounds(state.pausedAt);
+  if (hasActiveSelection() && offset >= bounds.end) offset = bounds.start;
+
+  const playDuration = hasActiveSelection() ? bounds.end - offset : undefined;
   state.startedAt = ctx.currentTime - offset;
-  state.audioSource.start(0, offset);
+  state.pausedAt = offset;
+  state.currentTime = offset;
+
+  if (playDuration !== undefined && playDuration > 0) {
+    state.audioSource.start(0, offset, playDuration);
+  } else {
+    state.audioSource.start(0, offset);
+  }
   state.isPlaying = true;
 
   document.getElementById('playIcon').style.display = 'none';
   document.getElementById('pauseIcon').style.display = '';
-  setStatus('playing', 'Playing…');
+  setStatus('playing', hasActiveSelection() ? 'Playing selection…' : 'Playing…');
 
   state.audioSource.onended = () => {
-    if (state.isPlaying) { state.isPlaying = false; state.pausedAt = 0; state.currentTime = 0; updatePlayhead(); showPlayIcon(); setStatus('ready', 'Playback ended'); }
+    if (!state.isPlaying) return;
+    const endBounds = getPlaybackBounds();
+    const resetTo = hasActiveSelection() ? endBounds.start : 0;
+    finishPlayback(resetTo, hasActiveSelection() ? 'Selection playback ended' : 'Playback ended');
   };
 
   animatePlayhead();
@@ -44,7 +89,8 @@ function playAudio() {
 function pauseAudio() {
   if (!state.audioSource) return;
   const ctx = getAudioCtx();
-  state.pausedAt = ctx.currentTime - state.startedAt;
+  state.pausedAt = clampToPlaybackBounds(ctx.currentTime - state.startedAt);
+  state.currentTime = state.pausedAt;
   state.audioSource.stop();
   state.isPlaying = false;
   showPlayIcon();
@@ -64,6 +110,15 @@ function animatePlayhead() {
   document.getElementById('currentTime').textContent = formatTime(state.currentTime);
   updatePlayhead();
 
+  if (hasActiveSelection()) {
+    const bounds = getPlaybackBounds();
+    if (state.currentTime >= bounds.end - 0.001) {
+      try { state.audioSource.stop(); } catch (e) {}
+      finishPlayback(bounds.start, 'Selection playback ended');
+      return;
+    }
+  }
+
   // Auto-scroll
   const dur = state.audioBuffer.duration;
   const visEnd = state.viewStart + dur / state.zoom;
@@ -73,7 +128,7 @@ function animatePlayhead() {
 
 function seekTo(t) {
   if (!state.audioBuffer) return;
-  t = Math.max(0, Math.min(t, state.audioBuffer.duration));
+  t = clampToPlaybackBounds(Math.max(0, Math.min(t, state.audioBuffer.duration)));
   const wasPlaying = state.isPlaying;
   if (wasPlaying) pauseAudio();
   state.pausedAt = t;
@@ -83,8 +138,17 @@ function seekTo(t) {
   if (wasPlaying) playAudio();
 }
 
-function skipToStart() { seekTo(0); }
-function skipToEnd() { seekTo(state.audioBuffer ? state.audioBuffer.duration : 0); }
+function skipToStart() {
+  const bounds = getPlaybackBounds();
+  seekTo(hasActiveSelection() ? bounds.start : 0);
+}
+
+function skipToEnd() {
+  if (!state.audioBuffer) return;
+  const bounds = getPlaybackBounds();
+  seekTo(hasActiveSelection() ? bounds.end : state.audioBuffer.duration);
+}
+
 function skipBackward() { seekTo(state.currentTime - 5); }
 function skipForward() { seekTo(state.currentTime + 5); }
 function setVolume(v) { if (state.gainNode) state.gainNode.gain.value = v; document.getElementById('volLabel').textContent = Math.round(v * 100) + '%'; }
