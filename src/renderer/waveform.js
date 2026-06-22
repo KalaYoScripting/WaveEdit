@@ -116,14 +116,108 @@ function drawRuler() {
 // ===================== WAVEFORM INTERACTION =====================
 const waveCanvas = document.getElementById('waveformCanvas');
 
+function setWaveformCursor() {
+  if (!waveCanvas) return;
+  if (state.isPanning) {
+    waveCanvas.style.cursor = 'grabbing';
+    return;
+  }
+  const cursors = { select: 'default', trim: 'col-resize', silence: 'crosshair', fade: 'crosshair', mark: 'copy' };
+  waveCanvas.style.cursor = cursors[state.currentTool] || 'default';
+}
+
+function parseTime(str) {
+  if (!str || !str.trim()) return null;
+  const trimmed = str.trim();
+  const parts = trimmed.split(':');
+  if (parts.length === 1) {
+    const s = parseFloat(parts[0]);
+    return Number.isFinite(s) ? Math.max(0, s) : null;
+  }
+  if (parts.length === 2) {
+    const m = parseInt(parts[0], 10);
+    const secParts = parts[1].split('.');
+    const sec = parseInt(secParts[0], 10);
+    const ms = secParts[1] ? parseInt(secParts[1].padEnd(3, '0').slice(0, 3), 10) : 0;
+    if (!Number.isFinite(m) || !Number.isFinite(sec) || !Number.isFinite(ms)) return null;
+    return Math.max(0, m * 60 + sec + ms / 1000);
+  }
+  return null;
+}
+
+function applySelectionFromInputs() {
+  if (!state.audioBuffer) return;
+  const startEl = document.getElementById('selStart');
+  const endEl = document.getElementById('selEnd');
+  if (!startEl || !endEl) return;
+
+  const start = parseTime(startEl.value);
+  const end = parseTime(endEl.value);
+  if (start === null || end === null) {
+    notify('Invalid time', 'Use MM:SS.mmm (e.g. 00:01.500).');
+    updateSelectionInfo();
+    return;
+  }
+
+  const dur = state.audioBuffer.duration;
+  const s = Math.max(0, Math.min(start, dur));
+  const e2 = Math.max(0, Math.min(end, dur));
+  if (s >= e2) {
+    notify('Invalid range', 'Start must be before end.');
+    updateSelectionInfo();
+    return;
+  }
+
+  state.selectionStart = s;
+  state.selectionEnd = e2;
+  updateSelectionOverlay();
+  updateSelectionInfo();
+}
+
+function initSelectionInputs() {
+  const startEl = document.getElementById('selStart');
+  const endEl = document.getElementById('selEnd');
+  if (!startEl || !endEl) return;
+  const apply = () => applySelectionFromInputs();
+  [startEl, endEl].forEach(el => {
+    el.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); apply(); el.blur(); }
+    });
+    el.addEventListener('change', apply);
+  });
+}
+
+function panWaveform(clientX) {
+  if (!state.audioBuffer) return;
+  const dx = clientX - state.panStartX;
+  const w = waveCanvas.offsetWidth;
+  const dur = state.audioBuffer.duration;
+  const visibleDur = dur / state.zoom;
+  state.viewStart = Math.max(0, Math.min(state.viewStartAtPan - (dx / w) * visibleDur, dur - visibleDur));
+  drawWaveform();
+  drawRuler();
+}
+
+waveCanvas.addEventListener('contextmenu', e => e.preventDefault());
+
 waveCanvas.addEventListener('mousedown', e => {
   if (!state.audioBuffer) return;
+  if (e.button === 2) {
+    e.preventDefault();
+    state.isPanning = true;
+    state.panStartX = e.clientX;
+    state.viewStartAtPan = state.viewStart;
+    setWaveformCursor();
+    return;
+  }
+  if (e.button !== 0) return;
   state.isDragging = true;
   const t = xToTime(e.offsetX);
   state.dragStartX = e.offsetX;
   if (state.currentTool === 'select' || state.currentTool === 'trim' || state.currentTool === 'silence' || state.currentTool === 'fade') {
     state.selectionStart = t; state.selectionEnd = t;
     updateSelectionOverlay();
+    updateSelectionInfo();
   } else if (state.currentTool === 'mark') {
     addMarker(t);
     state.isDragging = false;
@@ -134,6 +228,10 @@ waveCanvas.addEventListener('mousedown', e => {
 });
 
 waveCanvas.addEventListener('mousemove', e => {
+  if (state.isPanning && state.audioBuffer) {
+    panWaveform(e.clientX);
+    return;
+  }
   if (!state.isDragging || !state.audioBuffer) return;
   const t = xToTime(e.offsetX);
   if (state.currentTool !== 'mark') {
@@ -143,8 +241,38 @@ waveCanvas.addEventListener('mousemove', e => {
   }
 });
 
-waveCanvas.addEventListener('mouseup', () => { state.isDragging = false; });
-waveCanvas.addEventListener('mouseleave', () => { state.isDragging = false; });
+document.addEventListener('mousemove', e => {
+  if (state.isPanning && state.audioBuffer) panWaveform(e.clientX);
+});
+
+function stopPanning() {
+  if (!state.isPanning) return;
+  state.isPanning = false;
+  setWaveformCursor();
+}
+
+document.addEventListener('mouseup', e => {
+  if (e.button === 2) stopPanning();
+});
+
+function finishToolDrag() {
+  if (!state.isDragging || !state.audioBuffer) {
+    state.isDragging = false;
+    return;
+  }
+  const tool = state.currentTool;
+  const sel = getSelectionSamples();
+  if (sel && (tool === 'trim' || tool === 'silence' || tool === 'fade')) {
+    if (tool === 'trim') trimSelection();
+    else if (tool === 'silence') silenceSelection();
+    else if (state.selectionEnd >= state.selectionStart) fadeInSelection();
+    else fadeOutSelection();
+  }
+  state.isDragging = false;
+}
+
+waveCanvas.addEventListener('mouseup', () => { finishToolDrag(); });
+waveCanvas.addEventListener('mouseleave', () => { finishToolDrag(); });
 
 // Click to seek (if no drag)
 waveCanvas.addEventListener('click', e => {
@@ -198,13 +326,24 @@ function updateSelectionOverlay() {
 }
 
 function updateSelectionInfo() {
-  const el = document.getElementById('selectionInfo');
-  if (state.selectionStart === null || state.selectionEnd === null) {
-    el.textContent = 'No selection'; return;
+  const startEl = document.getElementById('selStart');
+  const endEl = document.getElementById('selEnd');
+  if (!startEl || !endEl) return;
+
+  if (state.selectionStart === null || state.selectionEnd === null || !state.audioBuffer) {
+    if (document.activeElement !== startEl) startEl.value = '';
+    if (document.activeElement !== endEl) endEl.value = '';
+    startEl.disabled = true;
+    endEl.disabled = true;
+    return;
   }
+
   const s = Math.min(state.selectionStart, state.selectionEnd);
   const e2 = Math.max(state.selectionStart, state.selectionEnd);
-  el.textContent = 'Selection: ' + formatTime(s) + ' → ' + formatTime(e2) + ' (' + formatTime(e2 - s) + ')';
+  if (document.activeElement !== startEl) startEl.value = formatTime(s);
+  if (document.activeElement !== endEl) endEl.value = formatTime(e2);
+  startEl.disabled = false;
+  endEl.disabled = false;
 }
 
 // ===================== PLAYHEAD =====================
@@ -233,3 +372,6 @@ function zoomFit() {
   if (state.audioBuffer) { drawWaveform(); drawRuler(); }
   document.getElementById('statusZoom').textContent = 'Zoom: 100%';
 }
+
+initSelectionInputs();
+updateSelectionInfo();

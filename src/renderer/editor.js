@@ -139,6 +139,8 @@ function addMarker(t) {
   const id = Date.now();
   state.markers.push({ id, time: t, label: 'Marker ' + (state.markers.length + 1) });
   renderMarkers();
+  const marksTab = document.querySelector('.fx-tab[onclick*="marks"]');
+  if (marksTab) switchTab('marks', marksTab);
   notify('Marker added', formatTime(t));
 }
 
@@ -168,8 +170,7 @@ function setTool(name, btn) {
   document.querySelectorAll('.sidebar-item[id^=tool-]').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   document.getElementById('statusTool').textContent = 'Tool: ' + name.charAt(0).toUpperCase() + name.slice(1);
-  const cursors = { select: 'default', trim: 'col-resize', silence: 'crosshair', fade: 'crosshair', mark: 'copy' };
-  document.getElementById('waveformCanvas').style.cursor = cursors[name] || 'default';
+  setWaveformCursor();
 }
 
 // ===================== TABS =====================

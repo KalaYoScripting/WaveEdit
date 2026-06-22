@@ -13,6 +13,9 @@ const state = {
   selectionEnd: null,
   isDragging: false,
   dragStartX: 0,
+  isPanning: false,
+  panStartX: 0,
+  viewStartAtPan: 0,
   currentTool: 'select',
   history: [],
   markers: [],
@@ -89,6 +92,7 @@ async function loadFromData(arrayBuffer, displayPath, filePath) {
 
     drawWaveform();
     drawRuler();
+    updateSelectionInfo();
 
     document.getElementById('dropPlaceholder').style.display = 'none';
     document.getElementById('waveformCanvas').style.display = 'block';

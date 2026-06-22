@@ -160,7 +160,13 @@
       </button>
     </div>
     <div class="tool-sep"></div>
-    <span style="font-size:11px; color: var(--color-text-faint); padding: 0 var(--space-2);" id="selectionInfo">No selection</span>
+    <div class="tool-group selection-region">
+      <label class="selection-label" for="selStart">Start</label>
+      <input type="text" id="selStart" class="selection-time-input" placeholder="00:00.000" disabled aria-label="Selection start time">
+      <span class="selection-arrow">→</span>
+      <label class="selection-label" for="selEnd">End</label>
+      <input type="text" id="selEnd" class="selection-time-input" placeholder="00:00.000" disabled aria-label="Selection end time">
+    </div>
   </div>
 
   <!-- Editor: waveform + transport -->
