@@ -120,7 +120,7 @@ a, button, [role="button"] { transition: color var(--transition), background var
 
 /* ===================== LOGO ===================== */
 .logo { display: flex; align-items: center; gap: var(--space-2); text-decoration: none; color: var(--color-text); }
-.logo-svg { width: 28px; height: 28px; flex-shrink: 0; }
+.logo-img { width: 28px; height: 28px; flex-shrink: 0; border-radius: var(--radius-sm); object-fit: cover; }
 .logo-name { font-size: var(--text-sm); font-weight: 600; letter-spacing: -0.01em; }
 
 /* ===================== TOPBAR ELEMENTS ===================== */

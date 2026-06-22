@@ -1,13 +1,7 @@
 # Build Resources
 
-`electron-builder` automatically picks up an application icon from this folder.
+Application icon: **`Icon.png`** (1024×1024 or larger recommended).
 
-Add one of the following and it will be used across installers:
+`electron-builder` uses this file for Windows (`.exe`), macOS (`.dmg`), and Linux (AppImage / `.deb`) installers. The same icon is shown in the taskbar when running via `npm start`.
 
-- `icon.png` — a single 1024x1024 (or at least 512x512) PNG. electron-builder
-  derives the platform-specific formats from it.
-- `icon.ico` — Windows-specific icon (optional override).
-- `icon.icns` — macOS-specific icon (optional override).
-
-If no icon is present, the default Electron icon is used (a non-fatal warning is
-printed during packaging).
+To rebuild installers with the icon: `npm run build:win` (or `build:mac` / `build:linux`).

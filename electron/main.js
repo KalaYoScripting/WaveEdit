@@ -12,6 +12,7 @@ let isDirty = false;
 let forceClose = false;
 
 const stateFile = path.join(app.getPath('userData'), 'window-state.json');
+const appIcon = path.join(__dirname, '..', 'build', 'Icon.png');
 
 function loadWindowState() {
   try {
@@ -43,6 +44,7 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 700,
     title: 'WaveEdit',
+    icon: appIcon,
     backgroundColor: '#111110',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
