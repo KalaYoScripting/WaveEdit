@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; font-src 'self';">
+<title>WaveEdit — Audio Editor</title>
+<link href="styles/fonts.css" rel="stylesheet">
+<link href="styles/app.css" rel="stylesheet">
+</head>
+<body>
+
+<div class="app">
+
+<!-- TOPBAR -->
+<header class="topbar" role="banner">
+  <!-- Logo -->
+  <div class="logo" aria-label="WaveEdit">
+    <svg class="logo-svg" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+      <rect x="1" y="1" width="26" height="26" rx="6" fill="var(--color-primary)" opacity="0.12"/>
+      <rect x="1" y="1" width="26" height="26" rx="6" stroke="var(--color-primary)" stroke-width="1.5"/>
+      <path d="M4 14 Q6 8 8 14 Q10 20 12 14 Q14 8 16 14 Q18 20 20 14 Q22 8 24 14"
+            stroke="var(--color-primary)" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+    </svg>
+    <span class="logo-name">WaveEdit</span>
+  </div>
+
+  <div class="tool-sep" style="height:20px; margin: 0 var(--space-2);"></div>
+
+  <!-- Top quick actions -->
+  <button class="btn btn-ghost" id="uploadBtn" onclick="openFile()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    Open
+  </button>
+  <button class="btn btn-ghost" id="saveBtn" onclick="saveFile()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+    Save
+  </button>
+  <button class="btn btn-ghost" id="exportBtn" onclick="openExportModal()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Export
+  </button>
+
+  <div class="topbar-spacer"></div>
+  <span class="topbar-file" id="fileNameLabel">No file loaded</span>
+  <div class="tool-sep" style="height:20px;"></div>
+
+  <!-- Theme toggle -->
+  <button class="btn-icon" data-theme-toggle aria-label="Switch theme" title="Toggle theme">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" role="complementary" aria-label="Tools and project">
+
+  <div class="sidebar-label">Tools</div>
+  <button class="sidebar-item active" id="tool-select" onclick="setTool('select', this)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 3l14 9-7 1-4 7z"/></svg>
+    Select
+  </button>
+  <button class="sidebar-item" id="tool-trim" onclick="setTool('trim', this)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+    Trim
+  </button>
+  <button class="sidebar-item" id="tool-silence" onclick="setTool('silence', this)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+    Silence
+  </button>
+  <button class="sidebar-item" id="tool-fade" onclick="setTool('fade', this)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+    Fade
+  </button>
+  <button class="sidebar-item" id="tool-mark" onclick="setTool('mark', this)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><path d="M5 12h14"/></svg>
+    Add Marker
+  </button>
+
+  <div class="sidebar-divider"></div>
+  <div class="sidebar-label">Edit</div>
+  <button class="sidebar-item" onclick="undoAction()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.13"/></svg>
+    Undo
+  </button>
+  <button class="sidebar-item" onclick="trimSelection()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 2v6"/><path d="M18 2v6"/><rect x="2" y="7" width="20" height="14" rx="2"/></svg>
+    Trim Selection
+  </button>
+  <button class="sidebar-item" onclick="silenceSelection()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="4"/></svg>
+    Silence Selection
+  </button>
+  <button class="sidebar-item" onclick="normalizeAudio()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Normalize
+  </button>
+  <button class="sidebar-item" onclick="reverseAudio()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 0 0 17-.49"/></svg>
+    Reverse
+  </button>
+
+  <div class="sidebar-flex"></div>
+
+  <!-- Track metadata -->
+  <div class="track-info" id="trackInfo" style="display:none">
+    <div class="sidebar-label" style="padding: 0 0 var(--space-2);">Track Info</div>
+    <div class="track-meta">
+      <div class="track-meta-row">
+        <span class="track-meta-key">Duration</span>
+        <span class="track-meta-val" id="metaDuration">—</span>
+      </div>
+      <div class="track-meta-row">
+        <span class="track-meta-key">Sample Rate</span>
+        <span class="track-meta-val" id="metaSampleRate">—</span>
+      </div>
+      <div class="track-meta-row">
+        <span class="track-meta-key">Channels</span>
+        <span class="track-meta-val" id="metaChannels">—</span>
+      </div>
+      <div class="track-meta-row">
+        <span class="track-meta-key">Bit Depth</span>
+        <span class="track-meta-val" id="metaBitDepth">—</span>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN AREA -->
+<main class="main" role="main">
+
+  <!-- Tool strip -->
+  <div class="tool-panel" role="toolbar" aria-label="Quick tools">
+    <div class="tool-group">
+      <button class="btn-icon" id="qZoomIn" onclick="zoomIn()" title="Zoom In" aria-label="Zoom in">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+      </button>
+      <button class="btn-icon" id="qZoomOut" onclick="zoomOut()" title="Zoom Out" aria-label="Zoom out">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+      </button>
+      <button class="btn-icon" id="qZoomFit" onclick="zoomFit()" title="Fit to View" aria-label="Fit to view">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+      </button>
+    </div>
+    <div class="tool-sep"></div>
+    <div class="tool-group">
+      <button class="btn-icon" onclick="selectAll()" title="Select All" aria-label="Select all">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z" fill="currentColor" opacity="0.3"/></svg>
+      </button>
+      <button class="btn-icon" onclick="clearSelection()" title="Clear Selection" aria-label="Clear selection">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="tool-sep"></div>
+    <div class="tool-group">
+      <button class="btn-icon" onclick="fadeInSelection()" title="Fade In" aria-label="Fade in selection">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 20 L21 4"/><line x1="3" y1="4" x2="3" y2="20"/></svg>
+      </button>
+      <button class="btn-icon" onclick="fadeOutSelection()" title="Fade Out" aria-label="Fade out selection">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 4 L21 20"/><line x1="21" y1="4" x2="21" y2="20"/></svg>
+      </button>
+    </div>
+    <div class="tool-sep"></div>
+    <span style="font-size:11px; color: var(--color-text-faint); padding: 0 var(--space-2);" id="selectionInfo">No selection</span>
+  </div>
+
+  <!-- Editor: waveform + transport -->
+  <div class="editor-area">
+
+    <!-- Timeline ruler -->
+    <div class="timeline-ruler" id="timelineRuler">
+      <canvas id="rulerCanvas" style="width:100%; height:100%;"></canvas>
+    </div>
+
+    <!-- Waveform canvas -->
+    <div class="waveform-panel" id="waveformPanel"
+         ondragover="event.preventDefault(); this.classList.add('drag-over')"
+         ondragleave="this.classList.remove('drag-over')"
+         ondrop="handleDrop(event)">
+
+      <!-- Empty state -->
+      <div class="drop-placeholder" id="dropPlaceholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+        </svg>
+        <p><strong>Drop an audio file here</strong></p>
+        <p>or click <strong>Open</strong> to browse</p>
+        <button class="btn btn-primary" onclick="openFile()" style="margin-top: var(--space-2);">Open file</button>
+      </div>
+
+      <canvas id="waveformCanvas" style="display:none"></canvas>
+      <div class="playhead" id="playhead" style="left:0; display:none"></div>
+      <div class="selection-overlay" id="selectionOverlay" style="display:none"></div>
+    </div>
+
+    <!-- Transport -->
+    <div class="transport">
+      <button class="transport-btn" onclick="skipToStart()" title="Skip to start" aria-label="Skip to start">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg>
+      </button>
+      <button class="transport-btn" onclick="skipBackward()" title="Skip 5s back" aria-label="Skip back">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="11 19 2 12 11 5 11 19"/><polygon points="22 19 13 12 22 5 22 19"/></svg>
+      </button>
+      <button class="transport-btn play-btn" id="playBtn" onclick="togglePlay()" title="Play/Pause" aria-label="Play or pause">
+        <svg id="playIcon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <svg id="pauseIcon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="display:none" aria-hidden="true"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+      </button>
+      <button class="transport-btn" onclick="skipForward()" title="Skip 5s forward" aria-label="Skip forward">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/></svg>
+      </button>
+      <button class="transport-btn" onclick="skipToEnd()" title="Skip to end" aria-label="Skip to end">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+      </button>
+
+      <div class="transport-spacer"></div>
+      <span class="transport-time" id="currentTime">00:00.000</span>
+      <span style="font-size:var(--text-xs); color:var(--color-text-faint);">/</span>
+      <span class="transport-time" id="totalTime" style="color:var(--color-text-muted);">00:00.000</span>
+      <div class="transport-spacer"></div>
+
+      <div class="volume-row">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--color-text-faint)" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="1"
+               oninput="setVolume(this.value)" style="width: 80px;" aria-label="Volume">
+        <span class="volume-label" id="volLabel">100%</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FX / Analysis tabs -->
+  <div class="fx-area">
+    <div class="fx-tabs" role="tablist">
+      <button class="fx-tab active" role="tab" aria-selected="true" onclick="switchTab('effects', this)">Effects</button>
+      <button class="fx-tab" role="tab" aria-selected="false" onclick="switchTab('spectrum', this)">Spectrum</button>
+      <button class="fx-tab" role="tab" aria-selected="false" onclick="switchTab('marks', this)">Markers</button>
+    </div>
+
+    <!-- Effects -->
+    <div class="fx-content active" id="tab-effects" role="tabpanel">
+
+      <div class="fx-note">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        Effect controls are a preview of the planned signal chain and are not yet applied to the audio buffer or export.
+      </div>
+
+      <div class="fx-card">
+        <div class="fx-card-header">
+          <span class="fx-card-title">Equalizer</span>
+          <div class="toggle on" id="eqToggle" onclick="toggleFx(this, 'eq')" role="switch" aria-checked="true" aria-label="Equalizer" tabindex="0"><div class="toggle-thumb"></div></div>
+        </div>
+        <div class="fx-row">
+          <div class="fx-row-label"><span class="fx-row-key">Bass (80Hz)</span><span class="fx-row-val" id="bassVal">0 dB</span></div>
+          <input type="range" min="-20" max="20" value="0" oninput="updateFx(this,'bassVal',' dB')" aria-label="Bass">
+        </div>
+        <div class="fx-row">
+          <div class="fx-row-label"><span class="fx-row-key">Mid (2kHz)</span><span class="fx-row-val" id="midVal">0 dB</span></div>
+          <input type="range" min="-20" max="20" value="0" oninput="updateFx(this,'midVal',' dB')" aria-label="Mid">
+        </div>
+        <div class="fx-row">
+          <div class="fx-row-label"><span class="fx-row-key">Treble (10kHz)</span><span class="fx-row-val" id="trebleVal">0 dB</span></div>
+          <input type="range" min="-20" max="20" value="0" oninput="updateFx(this,'trebleVal',' dB')" aria-label="Treble">
+        </div>
+      </div>
+
+      <div class="fx-card">
+        <div class="fx-card-header">
+          <span class="fx-card-title">Compressor</span>
+          <div class="toggle" id="compToggle" onclick="toggleFx(this, 'comp')" role="switch" aria-checked="false" aria-label="Compressor" tabindex="0"><div class="toggle-thumb"></div></div>
+        </div>
+        <div class="fx-row">
+          <div class="fx-row-label"><span class="fx-row-key">Threshold</span><span class="fx-row-val" id="threshVal">-24 dB</span></div>
+          <input type="range" min="-60" max="0" value="-24" oninput="updateFx(this,'threshVal',' dB')" aria-label="Threshold">
+        </div>
+        <div class="fx-row">
+          <div class="fx-row-label"><span class="fx-row-key">Ratio</span><span class="fx-row-val" id="ratioVal">4:1</span></div>
+          <input type="range" min="1" max="20" value="4" oninput="updateFxRatio(this)" aria-label="Ratio">
+        </div>
+        <div class="fx-row">
+          <div class="fx-row-label"><span class="fx-row-key">Make-Up</span><span class="fx-row-val" id="makeupVal">0 dB</span></div>
+          <input type="range" min="0" max="24" value="0" oninput="updateFx(this,'makeupVal',' dB')" aria-label="Make-Up Gain">
+        </div>
+      </div>
+
+      <div class="fx-card">
+        <div class="fx-card-header">
+          <span class="fx-card-title">Reverb</span>
+          <div class="toggle" id="reverbToggle" onclick="toggleFx(this, 'reverb')" role="switch" aria-checked="false" aria-label="Reverb" tabindex="0"><div class="toggle-thumb"></div></div>
+        </div>
+        <div class="fx-row">
+          <div class="fx-row-label"><span class="fx-row-key">Room Size</span><span class="fx-row-val" id="roomVal">30%</span></div>
+          <input type="range" min="0" max="100" value="30" oninput="updateFx(this,'roomVal','%')" aria-label="Room Size">
+        </div>
+        <div class="fx-row">
+          <div class="fx-row-label"><span class="fx-row-key">Wet/Dry</span><span class="fx-row-val" id="wetVal">20%</span></div>
+          <input type="range" min="0" max="100" value="20" oninput="updateFx(this,'wetVal','%')" aria-label="Wet/Dry Mix">
+        </div>
+      </div>
+
+      <div class="fx-card">
+        <div class="fx-card-header">
+          <span class="fx-card-title">Noise Gate</span>
+          <div class="toggle" id="gateToggle" onclick="toggleFx(this, 'gate')" role="switch" aria-checked="false" aria-label="Noise Gate" tabindex="0"><div class="toggle-thumb"></div></div>
+        </div>
+        <div class="fx-row">
+          <div class="fx-row-label"><span class="fx-row-key">Floor</span><span class="fx-row-val" id="gateVal">-50 dB</span></div>
+          <input type="range" min="-80" max="0" value="-50" oninput="updateFx(this,'gateVal',' dB')" aria-label="Gate Floor">
+        </div>
+        <div class="fx-row">
+          <div class="fx-row-label"><span class="fx-row-key">Release</span><span class="fx-row-val" id="relVal">200 ms</span></div>
+          <input type="range" min="10" max="2000" value="200" oninput="updateFx(this,'relVal',' ms')" aria-label="Release">
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Spectrum -->
+    <canvas id="spectrumCanvas" class="spectrum-content" role="img" aria-label="Frequency spectrum"></canvas>
+
+    <!-- Markers -->
+    <div class="marks-content" id="tab-marks" role="tabpanel"></div>
+
+  </div>
+
+  <!-- Status bar -->
+  <div class="statusbar" role="status" aria-live="polite">
+    <div class="statusbar-chip">
+      <div class="status-dot" id="statusDot" style="background: var(--color-text-faint)"></div>
+      <span id="statusText">Ready — open an audio file to begin</span>
+    </div>
+    <span>|</span>
+    <span id="statusZoom">Zoom: 100%</span>
+    <span>|</span>
+    <span id="statusTool">Tool: Select</span>
+  </div>
+
+</main>
+</div>
+
+<!-- Export modal -->
+<div class="modal-backdrop" id="exportModal" role="dialog" aria-modal="true" aria-labelledby="exportTitle">
+  <div class="modal">
+    <h2 class="modal-title" id="exportTitle">Export Audio</h2>
+    <div class="modal-row">
+      <label class="modal-label" for="exportFormat">Format</label>
+      <select class="modal-input" id="exportFormat">
+        <option value="wav">WAV (Lossless)</option>
+      </select>
+    </div>
+    <div class="modal-row">
+      <label class="modal-label" for="exportRange">Range</label>
+      <select class="modal-input" id="exportRange">
+        <option value="all">Full track</option>
+        <option value="selection">Selection only</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeExportModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="doExport()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Notification -->
+<div class="notif" id="notif" role="alert" aria-live="polite">
+  <div class="notif-title" id="notifTitle"></div>
+  <div class="notif-msg" id="notifMsg"></div>
+</div>
+
+<script src="renderer/app.js"></script>
+<script src="renderer/audio-engine.js"></script>
+<script src="renderer/waveform.js"></script>
+<script src="renderer/editor.js"></script>
+<script src="renderer/export.js"></script>
+</body>
+</html>

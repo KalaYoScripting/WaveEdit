@@ -1,0 +1,28 @@
+/*
+ * Offline-first fonts.
+ *
+ * WaveEdit ships with no network dependency. The UI uses 'Inter' and
+ * 'JetBrains Mono' when available and otherwise falls back to the system
+ * fonts declared in app.css (system-ui / Courier New).
+ *
+ * To bundle the real typefaces, drop the .woff2 files into
+ * src/assets/fonts/ and uncomment the @font-face rules below.
+ */
+
+/*
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('../assets/fonts/Inter-Variable.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400 500;
+  font-display: swap;
+  src: url('../assets/fonts/JetBrainsMono-Variable.woff2') format('woff2');
+}
+*/

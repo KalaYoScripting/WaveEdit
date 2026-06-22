@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WaveEdit — Audio Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ===================== DESIGN TOKENS ===================== */
+:root, [data-theme="light"] {
+  --color-bg:             #f7f6f2;
+  --color-surface:        #f9f8f5;
+  --color-surface-2:      #fbfbf9;
+  --color-surface-offset: #f0ede8;
+  --color-divider:        #dcd9d5;
+  --color-border:         #d4d1ca;
+  --color-text:           #28251d;
+  --color-text-muted:     #7a7974;
+  --color-text-faint:     #bab9b4;
+  --color-text-inverse:   #f9f8f4;
+  --color-primary:        #01696f;
+  --color-primary-hover:  #0c4e54;
+  --color-primary-active: #0f3638;
+  --color-primary-highlight: #cedcd8;
+  --color-error:          #a12c7b;
+  --color-success:        #437a22;
+  --color-warning:        #964219;
+  --color-surface-dynamic:#e6e4df;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 9999px;
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem;
+  --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem; --space-10: 2.5rem;
+  --space-12: 3rem; --space-16: 4rem;
+  --text-xs:   clamp(0.75rem,  0.7rem  + 0.25vw, 0.875rem);
+  --text-sm:   clamp(0.875rem, 0.8rem  + 0.35vw, 1rem);
+  --text-base: clamp(1rem,     0.95rem + 0.25vw, 1.125rem);
+  --text-lg:   clamp(1.125rem, 1rem    + 0.75vw, 1.5rem);
+  --text-xl:   clamp(1.5rem,   1.2rem  + 1.25vw, 2.25rem);
+  --shadow-sm: 0 1px 2px oklch(0.2 0.01 80 / 0.06);
+  --shadow-md: 0 4px 12px oklch(0.2 0.01 80 / 0.08);
+  --shadow-lg: 0 12px 32px oklch(0.2 0.01 80 / 0.12);
+  --transition: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+}
+
+[data-theme="dark"] {
+  --color-bg:             #111110;
+  --color-surface:        #181716;
+  --color-surface-2:      #1e1d1b;
+  --color-surface-offset: #1a1918;
+  --color-surface-dynamic:#2a2927;
+  --color-divider:        #232220;
+  --color-border:         #303030;
+  --color-text:           #cdccca;
+  --color-text-muted:     #797876;
+  --color-text-faint:     #5a5957;
+  --color-text-inverse:   #2b2a28;
+  --color-primary:        #4f98a3;
+  --color-primary-hover:  #227f8b;
+  --color-primary-active: #1a626b;
+  --color-primary-highlight: #1e3535;
+  --color-error:          #d163a7;
+  --color-success:        #6daa45;
+  --color-warning:        #fdab43;
+  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.25);
+  --shadow-md: 0 4px 12px oklch(0 0 0 / 0.35);
+  --shadow-lg: 0 12px 32px oklch(0 0 0 / 0.5);
+}
+
+/* ===================== BASE ===================== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+body {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+img, svg { display: block; }
+button { cursor: pointer; background: none; border: none; font: inherit; color: inherit; }
+input, select { font: inherit; color: inherit; }
+a, button, [role="button"] { transition: color var(--transition), background var(--transition), border-color var(--transition), box-shadow var(--transition); }
+:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; border-radius: var(--radius-sm); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* ===================== LAYOUT ===================== */
+.app {
+  display: grid;
+  grid-template-rows: 48px 1fr;
+  grid-template-columns: 220px 1fr;
+  height: 100dvh;
+}
+.topbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-4);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  z-index: 20;
+}
+.sidebar {
+  grid-row: 2;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+}
+.main {
+  grid-row: 2;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--color-bg);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===================== LOGO ===================== */
+.logo { display: flex; align-items: center; gap: var(--space-2); text-decoration: none; color: var(--color-text); }
+.logo-svg { width: 28px; height: 28px; flex-shrink: 0; }
+.logo-name { font-size: var(--text-sm); font-weight: 600; letter-spacing: -0.01em; }
+
+/* ===================== TOPBAR ELEMENTS ===================== */
+.topbar-spacer { flex: 1; }
+.topbar-file { font-size: var(--text-xs); color: var(--color-text-muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btn {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-xs); font-weight: 500;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.btn-primary { background: var(--color-primary); color: var(--color-text-inverse); }
+.btn-primary:hover { background: var(--color-primary-hover); }
+.btn-ghost { color: var(--color-text-muted); border-color: var(--color-border); }
+.btn-ghost:hover { color: var(--color-text); background: var(--color-surface-offset); }
+.btn-icon {
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-md); color: var(--color-text-muted);
+}
+.btn-icon:hover { color: var(--color-text); background: var(--color-surface-offset); }
+.btn-icon.active { color: var(--color-primary); background: var(--color-primary-highlight); }
+
+/* ===================== SIDEBAR ===================== */
+.sidebar-section { padding: var(--space-3) var(--space-4) var(--space-2); }
+.sidebar-label {
+  font-size: var(--text-xs); font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--color-text-faint);
+  padding: var(--space-4) var(--space-4) var(--space-2);
+}
+.sidebar-item {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-xs); color: var(--color-text-muted);
+  border-radius: 0; cursor: pointer; width: 100%; text-align: left;
+}
+.sidebar-item:hover { color: var(--color-text); background: var(--color-surface-offset); }
+.sidebar-item.active { color: var(--color-primary); background: var(--color-primary-highlight); }
+.sidebar-item svg { flex-shrink: 0; opacity: 0.7; }
+.sidebar-item.active svg { opacity: 1; }
+.sidebar-divider { height: 1px; background: var(--color-divider); margin: var(--space-2) 0; }
+.sidebar-flex { flex: 1; }
+
+/* ===================== TRACK INFO (SIDEBAR) ===================== */
+.track-info {
+  padding: var(--space-4);
+  border-top: 1px solid var(--color-divider);
+}
+.track-meta { display: flex; flex-direction: column; gap: var(--space-1); }
+.track-meta-row { display: flex; justify-content: space-between; }
+.track-meta-key { font-size: var(--text-xs); color: var(--color-text-faint); }
+.track-meta-val { font-size: var(--text-xs); color: var(--color-text-muted); font-family: var(--font-mono); }
+
+/* ===================== WAVEFORM AREA ===================== */
+.editor-area { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.waveform-panel {
+  flex: 1; position: relative; min-height: 200px; max-height: 340px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  overflow: hidden;
+}
+.waveform-panel.drag-over { border-color: var(--color-primary); background: color-mix(in oklch, var(--color-primary) 6%, var(--color-surface)); }
+.timeline-ruler {
+  height: 24px; background: var(--color-surface-offset);
+  border-bottom: 1px solid var(--color-border);
+  position: relative; overflow: hidden;
+}
+#waveformCanvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+.playhead {
+  position: absolute; top: 0; bottom: 0; width: 2px;
+  background: var(--color-primary);
+  pointer-events: none; transform: translateX(-1px);
+}
+.playhead::before {
+  content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 5px solid transparent; border-right: 5px solid transparent;
+  border-top: 7px solid var(--color-primary);
+}
+.selection-overlay {
+  position: absolute; top: 0; bottom: 0;
+  background: oklch(from var(--color-primary) l c h / 0.18);
+  border-left: 1px solid var(--color-primary);
+  border-right: 1px solid var(--color-primary);
+  pointer-events: none;
+}
+.drop-placeholder {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: var(--space-3);
+  color: var(--color-text-faint);
+}
+.drop-placeholder svg { opacity: 0.4; }
+.drop-placeholder p { font-size: var(--text-xs); }
+.drop-placeholder strong { color: var(--color-text-muted); font-weight: 500; }
+
+/* ===================== TRANSPORT BAR ===================== */
+.transport {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+.transport-time {
+  font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500;
+  color: var(--color-text); min-width: 100px;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.transport-btn {
+  width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-full); color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  transition: all var(--transition);
+}
+.transport-btn:hover { color: var(--color-text); background: var(--color-surface-offset); border-color: var(--color-text-faint); }
+.transport-btn.play-btn {
+  width: 44px; height: 44px;
+  background: var(--color-primary); color: var(--color-text-inverse);
+  border-color: var(--color-primary);
+}
+.transport-btn.play-btn:hover { background: var(--color-primary-hover); border-color: var(--color-primary-hover); }
+.transport-spacer { flex: 1; }
+.volume-row { display: flex; align-items: center; gap: var(--space-2); }
+.volume-label { font-size: var(--text-xs); color: var(--color-text-faint); }
+input[type="range"] {
+  -webkit-appearance: none; appearance: none;
+  height: 4px; border-radius: var(--radius-full);
+  background: var(--color-surface-dynamic);
+  outline: none; cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--color-primary); cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%; border: none;
+  background: var(--color-primary);
+}
+
+/* ===================== TOOL PANEL ===================== */
+.tool-panel {
+  display: flex; align-items: center; gap: var(--space-1);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-surface-offset);
+  border-bottom: 1px solid var(--color-border);
+  overflow-x: auto;
+}
+.tool-sep { width: 1px; height: 24px; background: var(--color-border); margin: 0 var(--space-1); }
+.tool-group { display: flex; align-items: center; gap: var(--space-1); }
+
+/* ===================== EFFECTS AREA ===================== */
+.fx-area { display: flex; flex-direction: column; min-height: 0; }
+.fx-tabs { display: flex; border-bottom: 1px solid var(--color-border); background: var(--color-surface); }
+.fx-tab {
+  padding: var(--space-2) var(--space-4); font-size: var(--text-xs); font-weight: 500;
+  color: var(--color-text-muted); border-bottom: 2px solid transparent; cursor: pointer;
+  transition: all var(--transition);
+}
+.fx-tab:hover { color: var(--color-text); }
+.fx-tab.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
+.fx-content {
+  display: none; padding: var(--space-4); overflow-y: auto; flex: 1;
+  background: var(--color-bg);
+}
+.fx-content.active { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+
+/* ===================== FX CARDS ===================== */
+.fx-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  min-width: 180px; flex: 1;
+  box-shadow: var(--shadow-sm);
+}
+.fx-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-3); }
+.fx-card-title { font-size: var(--text-xs); font-weight: 600; color: var(--color-text); }
+.toggle {
+  width: 32px; height: 18px; border-radius: var(--radius-full);
+  background: var(--color-surface-dynamic); position: relative; cursor: pointer;
+  border: 1px solid var(--color-border); transition: background var(--transition);
+}
+.toggle.on { background: var(--color-primary); border-color: var(--color-primary); }
+.toggle-thumb {
+  width: 12px; height: 12px; border-radius: 50%; background: white;
+  position: absolute; top: 2px; left: 2px; transition: transform var(--transition);
+}
+.toggle.on .toggle-thumb { transform: translateX(14px); }
+.fx-row { display: flex; flex-direction: column; gap: var(--space-1); margin-bottom: var(--space-2); }
+.fx-row-label { display: flex; justify-content: space-between; }
+.fx-row-key { font-size: var(--text-xs); color: var(--color-text-muted); }
+.fx-row-val { font-size: var(--text-xs); color: var(--color-text); font-family: var(--font-mono); }
+
+/* ===================== SPECTRUM CANVAS ===================== */
+.spectrum-content { display: none; padding: var(--space-4); background: var(--color-bg); }
+.spectrum-content.active { display: block; }
+#spectrumCanvas { width: 100%; border-radius: var(--radius-md); border: 1px solid var(--color-border); }
+
+/* ===================== MARKS LIST ===================== */
+.marks-content { display: none; padding: var(--space-4); background: var(--color-bg); overflow-y: auto; }
+.marks-content.active { display: flex; flex-direction: column; gap: var(--space-2); }
+.mark-item {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.mark-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-primary); flex-shrink: 0; }
+.mark-time { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-text); min-width: 70px; }
+.mark-label { font-size: var(--text-xs); color: var(--color-text-muted); flex: 1; }
+.mark-remove { color: var(--color-text-faint); font-size: var(--text-xs); }
+.mark-remove:hover { color: var(--color-error); }
+
+/* ===================== STATUS BAR ===================== */
+.statusbar {
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: 0 var(--space-4); height: 26px;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  font-size: 11px; color: var(--color-text-faint);
+}
+.statusbar-chip { display: flex; align-items: center; gap: var(--space-1); }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-success); }
+
+/* ===================== MODAL ===================== */
+.modal-backdrop {
+  position: fixed; inset: 0; background: oklch(0 0 0 / 0.6);
+  display: none; align-items: center; justify-content: center; z-index: 100;
+  backdrop-filter: blur(4px);
+}
+.modal-backdrop.open { display: flex; }
+.modal {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  width: min(480px, 90vw);
+  box-shadow: var(--shadow-lg);
+}
+.modal-title { font-size: var(--text-lg); font-weight: 600; margin-bottom: var(--space-4); }
+.modal-row { display: flex; flex-direction: column; gap: var(--space-1); margin-bottom: var(--space-4); }
+.modal-label { font-size: var(--text-xs); color: var(--color-text-muted); font-weight: 500; }
+.modal-input {
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-bg); border: 1px solid var(--color-border);
+  border-radius: var(--radius-md); font-size: var(--text-sm);
+  color: var(--color-text);
+}
+.modal-input:focus { outline: none; border-color: var(--color-primary); }
+.modal-actions { display: flex; gap: var(--space-2); justify-content: flex-end; margin-top: var(--space-2); }
+select.modal-input { cursor: pointer; }
+
+/* ===================== NOTIFICATION ===================== */
+.notif {
+  position: fixed; bottom: var(--space-6); right: var(--space-6); z-index: 200;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--text-xs);
+  transform: translateY(20px); opacity: 0;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  max-width: 280px;
+}
+.notif.show { transform: translateY(0); opacity: 1; }
+.notif-title { font-weight: 600; color: var(--color-text); margin-bottom: var(--space-1); }
+.notif-msg { color: var(--color-text-muted); }
+
+/* ===================== RESPONSIVE ===================== */
+@media (max-width: 768px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: 48px auto 1fr auto; }
+  .sidebar { display: none; }
+  .topbar-file { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+<!-- TOPBAR -->
+<header class="topbar" role="banner">
+  <!-- Logo -->
+  <a class="logo" href="#" aria-label="WaveEdit Home">
+    <svg class="logo-svg" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+      <rect x="1" y="1" width="26" height="26" rx="6" fill="var(--color-primary)" opacity="0.12"/>
+      <rect x="1" y="1" width="26" height="26" rx="6" stroke="var(--color-primary)" stroke-width="1.5"/>
+      <path d="M4 14 Q6 8 8 14 Q10 20 12 14 Q14 8 16 14 Q18 20 20 14 Q22 8 24 14"
+            stroke="var(--color-primary)" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+    </svg>
+    <span class="logo-name">WaveEdit</span>
+  </a>
+
+  <div class="tool-sep" style="height:20px; margin: 0 var(--space-2);"></div>
+
+  <!-- Top quick actions -->
+  <button class="btn btn-ghost" id="uploadBtn" onclick="document.getElementById('fileInput').click()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    Open
+  </button>
+  <input type="file" id="fileInput" accept="audio/*" style="display:none">
+  <button class="btn btn-ghost" id="exportBtn" onclick="openExportModal()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Export
+  </button>
+
+  <div class="topbar-spacer"></div>
+  <span class="topbar-file" id="fileNameLabel">No file loaded</span>
+  <div class="tool-sep" style="height:20px;"></div>
+
+  <!-- Theme toggle -->
+  <button class="btn-icon" data-theme-toggle aria-label="Switch theme" title="Toggle theme">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" role="complementary" aria-label="Tools and project">
+
+  <div class="sidebar-label">Tools</div>
+  <button class="sidebar-item active" id="tool-select" onclick="setTool('select', this)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 3l14 9-7 1-4 7z"/></svg>
+    Select
+  </button>
+  <button class="sidebar-item" id="tool-trim" onclick="setTool('trim', this)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+    Trim
+  </button>
+  <button class="sidebar-item" id="tool-silence" onclick="setTool('silence', this)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+    Silence
+  </button>
+  <button class="sidebar-item" id="tool-fade" onclick="setTool('fade', this)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+    Fade
+  </button>
+  <button class="sidebar-item" id="tool-mark" onclick="setTool('mark', this)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><path d="M5 12h14"/></svg>
+    Add Marker
+  </button>
+
+  <div class="sidebar-divider"></div>
+  <div class="sidebar-label">Edit</div>
+  <button class="sidebar-item" onclick="undoAction()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.13"/></svg>
+    Undo
+  </button>
+  <button class="sidebar-item" onclick="trimSelection()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 2v6"/><path d="M18 2v6"/><rect x="2" y="7" width="20" height="14" rx="2"/></svg>
+    Trim Selection
+  </button>
+  <button class="sidebar-item" onclick="silenceSelection()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="4"/></svg>
+    Silence Selection
+  </button>
+  <button class="sidebar-item" onclick="normalizeAudio()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Normalize
+  </button>
+  <button class="sidebar-item" onclick="reverseAudio()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 0 0 17-.49"/></svg>
+    Reverse
+  </button>
+
+  <div class="sidebar-flex"></div>
+
+  <!-- Track metadata -->
+  <div class="track-info" id="trackInfo" style="display:none">
+    <div class="sidebar-label" style="padding: 0 0 var(--space-2);">Track Info</div>
+    <div class="track-meta">
+      <div class="track-meta-row">
+        <span class="track-meta-key">Duration</span>
+        <span class="track-meta-val" id="metaDuration">—</span>
+      </div>
+      <div class="track-meta-row">
+        <span class="track-meta-key">Sample Rate</span>
+        <span class="track-meta-val" id="metaSampleRate">—</span>
+      </div>
+      <div class="track-meta-row">
+        <span class="track-meta-key">Channels</span>
+        <span class="track-meta-val" id="metaChannels">—</span>
+      </div>
+      <div class="track-meta-row">
+        <span class="track-meta-key">Bit Depth</span>
+        <span class="track-meta-val" id="metaBitDepth">—</span>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN AREA -->
+<main class="main" role="main">
+
+  <!-- Tool strip -->
+  <div class="tool-panel" role="toolbar" aria-label="Quick tools">
+    <div class="tool-group">
+      <button class="btn-icon" id="qZoomIn" onclick="zoomIn()" title="Zoom In" aria-label="Zoom in">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+      </button>
+      <button class="btn-icon" id="qZoomOut" onclick="zoomOut()" title="Zoom Out" aria-label="Zoom out">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+      </button>
+      <button class="btn-icon" id="qZoomFit" onclick="zoomFit()" title="Fit to View" aria-label="Fit to view">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+      </button>
+    </div>
+    <div class="tool-sep"></div>
+    <div class="tool-group">
+      <button class="btn-icon" onclick="selectAll()" title="Select All" aria-label="Select all">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z" fill="currentColor" opacity="0.3"/></svg>
+      </button>
+      <button class="btn-icon" onclick="clearSelection()" title="Clear Selection" aria-label="Clear selection">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="tool-sep"></div>
+    <div class="tool-group">
+      <button class="btn-icon" onclick="fadeInSelection()" title="Fade In" aria-label="Fade in selection">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 20 L21 4"/><line x1="3" y1="4" x2="3" y2="20"/></svg>
+      </button>
+      <button class="btn-icon" onclick="fadeOutSelection()" title="Fade Out" aria-label="Fade out selection">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 4 L21 20"/><line x1="21" y1="4" x2="21" y2="20"/></svg>
+      </button>
+    </div>
+    <div class="tool-sep"></div>
+    <span style="font-size:11px; color: var(--color-text-faint); padding: 0 var(--space-2);" id="selectionInfo">No selection</span>
+  </div>
+
+  <!-- Editor: waveform + transport -->
+  <div class="editor-area">
+
+    <!-- Timeline ruler -->
+    <div class="timeline-ruler" id="timelineRuler">
+      <canvas id="rulerCanvas" style="width:100%; height:100%;"></canvas>
+    </div>
+
+    <!-- Waveform canvas -->
+    <div class="waveform-panel" id="waveformPanel"
+         ondragover="event.preventDefault(); this.classList.add('drag-over')"
+         ondragleave="this.classList.remove('drag-over')"
+         ondrop="handleDrop(event)">
+
+      <!-- Empty state -->
+      <div class="drop-placeholder" id="dropPlaceholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+        </svg>
+        <p><strong>Drop an audio file here</strong></p>
+        <p>or click <strong>Open</strong> to browse</p>
+        <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()" style="margin-top: var(--space-2);">Open file</button>
+      </div>
+
+      <canvas id="waveformCanvas" style="display:none"></canvas>
+      <div class="playhead" id="playhead" style="left:0; display:none"></div>
+      <div class="selection-overlay" id="selectionOverlay" style="display:none"></div>
+    </div>
+
+    <!-- Transport -->
+    <div class="transport">
+      <button class="transport-btn" onclick="skipToStart()" title="Skip to start" aria-label="Skip to start">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg>
+      </button>
+      <button class="transport-btn" onclick="skipBackward()" title="Skip 5s back" aria-label="Skip back">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="11 19 2 12 11 5 11 19"/><polygon points="22 19 13 12 22 5 22 19"/></svg>
+      </button>
+      <button class="transport-btn play-btn" id="playBtn" onclick="togglePlay()" title="Play/Pause" aria-label="Play or pause">
+        <svg id="playIcon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <svg id="pauseIcon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="display:none" aria-hidden="true"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+      </button>
+      <button class="transport-btn" onclick="skipForward()" title="Skip 5s forward" aria-label="Skip forward">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/></svg>
+      </button>
+      <button class="transport-btn" onclick="skipToEnd()" title="Skip to end" aria-label="Skip to end">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+      </button>
+
+      <div class="transport-spacer"></div>
+      <span class="transport-time" id="currentTime">00:00.000</span>
+      <span style="font-size:var(--text-xs); color:var(--color-text-faint);">/</span>
+      <span class="transport-time" id="totalTime" style="color:var(--color-text-muted);">00:00.000</span>
+      <div class="transport-spacer"></div>
+
+      <div class="volume-row">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--color-text-faint)" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="1"
+               oninput="setVolume(this.value)" style="width: 80px;" aria-label="Volume">
+        <span class="volume-label" id="volLabel">100%</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FX / Analysis tabs -->
+  <div class="fx-area">
+    <div class="fx-tabs" role="tablist">
+      <button class="fx-tab active" role="tab" aria-selected="true" onclick="switchTab('effects', this)">Effects</button>
+      <button class="fx-tab" role="tab" aria-selected="false" onclick="switchTab('spectrum', this)">Spectrum</button>
+      <button class="fx-tab" role="tab" aria-selected="false" onclick="switchTab('marks', this)">Markers</button>
+    </div>
+
+    <!-- Effects -->
+    <div class="fx-content active" id="tab-effects" role="tabpanel">
+
+      <div class="fx-card">
+        <div class="fx-card-header">
+          <span class="fx-card-title">Equalizer</span>
+          <div class="toggle on" id="eqToggle" onclick="toggleFx(this, 'eq')" role="switch" aria-checked="true" aria-label="Equalizer" tabindex="0"><div class="toggle-thumb"></div></div>
+        </div>
+        <div class="fx-row">
+          <div class="fx-row-label"><span class="fx-row-key">Bass (80Hz)</span><span class="fx-row-val" id="bassVal">0 dB</span></div>
+          <input type="range" min="-20" max="20" value="0" oninput="updateFx(this,'bassVal',' dB')" aria-label="Bass">
+        </div>
+        <div class="fx-row">
+          <div class="fx-row-label"><span class="fx-row-key">Mid (2kHz)</span><span class="fx-row-val" id="midVal">0 dB</span></div>
+          <input type="range" min="-20" max="20" value="0" oninput="updateFx(this,'midVal',' dB')" aria-label="Mid">
+        </div>
+        <div class="fx-row">
+          <div class="fx-row-label"><span class="fx-row-key">Treble (10kHz)</span><span class="fx-row-val" id="trebleVal">0 dB</span></div>
+          <input type="range" min="-20" max="20" value="0" oninput="updateFx(this,'trebleVal',' dB')" aria-label="Treble">
+        </div>
+      </div>
+
+      <div class="fx-card">
+        <div class="fx-card-header">
+          <span class="fx-card-title">Compressor</span>
+          <div class="toggle" id="compToggle" onclick="toggleFx(this, 'comp')" role="switch" aria-checked="false" aria-label="Compressor" tabindex="0"><div class="toggle-thumb"></div></div>
+        </div>
+        <div class="fx-row">
+          <div class="fx-row-label"><span class="fx-row-key">Threshold</span><span class="fx-row-val" id="threshVal">-24 dB</span></div>
+          <input type="range" min="-60" max="0" value="-24" oninput="updateFx(this,'threshVal',' dB')" aria-label="Threshold">
+        </div>
+        <div class="fx-row">
+          <div class="fx-row-label"><span class="fx-row-key">Ratio</span><span class="fx-row-val" id="ratioVal">4:1</span></div>
+          <input type="range" min="1" max="20" value="4" oninput="updateFxRatio(this)" aria-label="Ratio">
+        </div>
+        <div class="fx-row">
+          <div class="fx-row-label"><span class="fx-row-key">Make-Up</span><span class="fx-row-val" id="makeupVal">0 dB</span></div>
+          <input type="range" min="0" max="24" value="0" oninput="updateFx(this,'makeupVal',' dB')" aria-label="Make-Up Gain">
+        </div>
+      </div>
+
+      <div class="fx-card">
+        <div class="fx-card-header">
+          <span class="fx-card-title">Reverb</span>
+          <div class="toggle" id="reverbToggle" onclick="toggleFx(this, 'reverb')" role="switch" aria-checked="false" aria-label="Reverb" tabindex="0"><div class="toggle-thumb"></div></div>
+        </div>
+        <div class="fx-row">
+          <div class="fx-row-label"><span class="fx-row-key">Room Size</span><span class="fx-row-val" id="roomVal">30%</span></div>
+          <input type="range" min="0" max="100" value="30" oninput="updateFx(this,'roomVal','%')" aria-label="Room Size">
+        </div>
+        <div class="fx-row">
+          <div class="fx-row-label"><span class="fx-row-key">Wet/Dry</span><span class="fx-row-val" id="wetVal">20%</span></div>
+          <input type="range" min="0" max="100" value="20" oninput="updateFx(this,'wetVal','%')" aria-label="Wet/Dry Mix">
+        </div>
+      </div>
+
+      <div class="fx-card">
+        <div class="fx-card-header">
+          <span class="fx-card-title">Noise Gate</span>
+          <div class="toggle" id="gateToggle" onclick="toggleFx(this, 'gate')" role="switch" aria-checked="false" aria-label="Noise Gate" tabindex="0"><div class="toggle-thumb"></div></div>
+        </div>
+        <div class="fx-row">
+          <div class="fx-row-label"><span class="fx-row-key">Floor</span><span class="fx-row-val" id="gateVal">-50 dB</span></div>
+          <input type="range" min="-80" max="0" value="-50" oninput="updateFx(this,'gateVal',' dB')" aria-label="Gate Floor">
+        </div>
+        <div class="fx-row">
+          <div class="fx-row-label"><span class="fx-row-key">Release</span><span class="fx-row-val" id="relVal">200 ms</span></div>
+          <input type="range" min="10" max="2000" value="200" oninput="updateFx(this,'relVal',' ms')" aria-label="Release">
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Spectrum -->
+    <canvas id="spectrumCanvas" class="spectrum-content" role="img" aria-label="Frequency spectrum"></canvas>
+
+    <!-- Markers -->
+    <div class="marks-content" id="tab-marks" role="tabpanel"></div>
+
+  </div>
+
+  <!-- Status bar -->
+  <div class="statusbar" role="status" aria-live="polite">
+    <div class="statusbar-chip">
+      <div class="status-dot" id="statusDot" style="background: var(--color-text-faint)"></div>
+      <span id="statusText">Ready — open an audio file to begin</span>
+    </div>
+    <span>|</span>
+    <span id="statusZoom">Zoom: 100%</span>
+    <span>|</span>
+    <span id="statusTool">Tool: Select</span>
+  </div>
+
+</main>
+</div>
+
+<!-- Export modal -->
+<div class="modal-backdrop" id="exportModal" role="dialog" aria-modal="true" aria-labelledby="exportTitle">
+  <div class="modal">
+    <h2 class="modal-title" id="exportTitle">Export Audio</h2>
+    <div class="modal-row">
+      <label class="modal-label" for="exportFormat">Format</label>
+      <select class="modal-input" id="exportFormat">
+        <option value="wav">WAV (Lossless)</option>
+        <option value="mp3">MP3 (Lossy)</option>
+        <option value="ogg">OGG Vorbis</option>
+        <option value="flac">FLAC (Lossless)</option>
+      </select>
+    </div>
+    <div class="modal-row">
+      <label class="modal-label" for="exportQuality">Quality</label>
+      <select class="modal-input" id="exportQuality">
+        <option value="high">High — 320kbps / 24-bit</option>
+        <option value="medium">Medium — 192kbps / 16-bit</option>
+        <option value="low">Low — 128kbps / 16-bit</option>
+      </select>
+    </div>
+    <div class="modal-row">
+      <label class="modal-label" for="exportSelection">Range</label>
+      <select class="modal-input" id="exportSelection">
+        <option value="all">Full track</option>
+        <option value="selection">Selection only</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeExportModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="doExport()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Notification -->
+<div class="notif" id="notif" role="alert" aria-live="polite">
+  <div class="notif-title" id="notifTitle"></div>
+  <div class="notif-msg" id="notifMsg"></div>
+</div>
+
+<script>
+// ===================== STATE =====================
+const state = {
+  audioCtx: null,
+  audioBuffer: null,
+  audioSource: null,
+  isPlaying: false,
+  currentTime: 0,
+  startedAt: 0,
+  pausedAt: 0,
+  zoom: 1,
+  viewStart: 0,
+  selectionStart: null,
+  selectionEnd: null,
+  isDragging: false,
+  dragStartX: 0,
+  currentTool: 'select',
+  history: [],
+  markers: [],
+  analyser: null,
+  animFrame: null,
+  spectrumFrame: null,
+  gainNode: null,
+  fileName: null,
+};
+
+// ===================== AUDIO CONTEXT =====================
+function getAudioCtx() {
+  if (!state.audioCtx) state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return state.audioCtx;
+}
+
+// ===================== FILE LOADING =====================
+document.getElementById('fileInput').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (file) loadFile(file);
+  e.target.value = '';
+});
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('waveformPanel').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('audio/')) loadFile(file);
+  else notify('Invalid file', 'Please drop an audio file (MP3, WAV, OGG, etc.)');
+}
+
+async function loadFile(file) {
+  setStatus('loading', 'Loading ' + file.name + '…');
+  state.fileName = file.name;
+  document.getElementById('fileNameLabel').textContent = file.name;
+
+  const ctx = getAudioCtx();
+  const arrayBuffer = await file.arrayBuffer();
+  try {
+    state.audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+    state.currentTime = 0; state.pausedAt = 0;
+    state.selectionStart = null; state.selectionEnd = null;
+    state.history = [];
+    state.zoom = 1; state.viewStart = 0;
+
+    // Metadata
+    const dur = state.audioBuffer.duration;
+    document.getElementById('metaDuration').textContent = formatTime(dur);
+    document.getElementById('metaSampleRate').textContent = ctx.sampleRate + ' Hz';
+    document.getElementById('metaChannels').textContent = state.audioBuffer.numberOfChannels === 1 ? 'Mono' : 'Stereo';
+    document.getElementById('metaBitDepth').textContent = '32-bit float';
+    document.getElementById('trackInfo').style.display = '';
+    document.getElementById('totalTime').textContent = formatTime(dur);
+
+    drawWaveform();
+    drawRuler();
+
+    document.getElementById('dropPlaceholder').style.display = 'none';
+    document.getElementById('waveformCanvas').style.display = 'block';
+    document.getElementById('playhead').style.display = 'block';
+
+    setStatus('ready', 'Loaded: ' + file.name + ' (' + formatTime(dur) + ')');
+    notify('File loaded', file.name + ' — ' + formatTime(dur) + ' / ' + (state.audioBuffer.numberOfChannels === 1 ? 'Mono' : 'Stereo'));
+    document.getElementById('statusZoom').textContent = 'Zoom: 100%';
+  } catch(err) {
+    setStatus('error', 'Failed to decode file');
+    notify('Error', 'Could not decode this audio file.');
+  }
+}
+
+// ===================== WAVEFORM DRAWING =====================
+function drawWaveform() {
+  if (!state.audioBuffer) return;
+  const canvas = document.getElementById('waveformCanvas');
+  const panel = document.getElementById('waveformPanel');
+  canvas.width = panel.clientWidth * devicePixelRatio;
+  canvas.height = panel.clientHeight * devicePixelRatio;
+  canvas.style.width = panel.clientWidth + 'px';
+  canvas.style.height = panel.clientHeight + 'px';
+
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+  ctx.clearRect(0, 0, W, H);
+
+  const dur = state.audioBuffer.duration;
+  const visibleDur = dur / state.zoom;
+  const startSample = Math.floor((state.viewStart / dur) * state.audioBuffer.length);
+  const endSample = Math.floor(((state.viewStart + visibleDur) / dur) * state.audioBuffer.length);
+
+  const data = state.audioBuffer.getChannelData(0);
+  const samplesPerPx = (endSample - startSample) / (W / devicePixelRatio);
+
+  // Grid lines
+  ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = (H / 4) * i;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+
+  // Center line
+  ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, H/2); ctx.lineTo(W, H/2); ctx.stroke();
+
+  // Waveform gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  if (isDark) {
+    grad.addColorStop(0, 'rgba(79,152,163,0.85)');
+    grad.addColorStop(0.5, 'rgba(79,152,163,0.5)');
+    grad.addColorStop(1, 'rgba(79,152,163,0.85)');
+  } else {
+    grad.addColorStop(0, 'rgba(1,105,111,0.85)');
+    grad.addColorStop(0.5, 'rgba(1,105,111,0.5)');
+    grad.addColorStop(1, 'rgba(1,105,111,0.85)');
+  }
+
+  ctx.fillStyle = grad;
+  const pxW = W / devicePixelRatio;
+  const centerY = H / 2;
+
+  ctx.beginPath();
+  const topPoints = [], botPoints = [];
+  for (let x = 0; x < pxW; x++) {
+    const sStart = Math.floor(startSample + x * samplesPerPx);
+    const sEnd = Math.min(Math.floor(startSample + (x + 1) * samplesPerPx), data.length);
+    let mn = 0, mx = 0;
+    for (let s = sStart; s < sEnd; s++) {
+      const v = data[s];
+      if (v > mx) mx = v;
+      if (v < mn) mn = v;
+    }
+    const xPx = x * devicePixelRatio;
+    topPoints.push([xPx, centerY - mx * (H/2 - 4)]);
+    botPoints.push([xPx, centerY - mn * (H/2 - 4)]);
+  }
+  if (topPoints.length > 0) {
+    ctx.moveTo(topPoints[0][0], topPoints[0][1]);
+    topPoints.forEach(p => ctx.lineTo(p[0], p[1]));
+    for (let i = botPoints.length - 1; i >= 0; i--) ctx.lineTo(botPoints[i][0], botPoints[i][1]);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Update selection overlay
+  updateSelectionOverlay();
+  updatePlayhead();
+}
+
+function drawRuler() {
+  if (!state.audioBuffer) return;
+  const ruler = document.getElementById('rulerCanvas');
+  const panel = document.getElementById('timelineRuler');
+  ruler.width = panel.clientWidth * devicePixelRatio;
+  ruler.height = panel.clientHeight * devicePixelRatio;
+  ruler.style.width = panel.clientWidth + 'px';
+  ruler.style.height = panel.clientHeight + 'px';
+
+  const ctx = ruler.getContext('2d');
+  const W = ruler.width, H = ruler.height;
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const dur = state.audioBuffer.duration;
+  const visibleDur = dur / state.zoom;
+  const pxPerSec = (W / devicePixelRatio) / visibleDur;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = isDark ? 'rgba(205,204,202,0.6)' : 'rgba(40,37,29,0.6)';
+  ctx.font = `${10 * devicePixelRatio}px Inter, sans-serif`;
+
+  // Choose tick interval
+  const intervals = [0.1, 0.25, 0.5, 1, 2, 5, 10, 30, 60];
+  let interval = intervals.find(i => i * pxPerSec > 50) || 60;
+
+  for (let t = Math.ceil(state.viewStart / interval) * interval; t < state.viewStart + visibleDur; t += interval) {
+    const x = (t - state.viewStart) / visibleDur * (W / devicePixelRatio) * devicePixelRatio;
+    ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, H); ctx.lineTo(x, H - 8 * devicePixelRatio); ctx.stroke();
+    const label = formatTime(t);
+    ctx.fillText(label, x + 3, H - 10 * devicePixelRatio);
+  }
+}
+
+// ===================== WAVEFORM INTERACTION =====================
+const waveCanvas = document.getElementById('waveformCanvas');
+
+waveCanvas.addEventListener('mousedown', e => {
+  if (!state.audioBuffer) return;
+  state.isDragging = true;
+  const t = xToTime(e.offsetX);
+  state.dragStartX = e.offsetX;
+  if (state.currentTool === 'select' || state.currentTool === 'trim' || state.currentTool === 'silence' || state.currentTool === 'fade') {
+    state.selectionStart = t; state.selectionEnd = t;
+    updateSelectionOverlay();
+  } else if (state.currentTool === 'mark') {
+    addMarker(t);
+    state.isDragging = false;
+  } else {
+    // Seek
+    seekTo(t);
+  }
+});
+
+waveCanvas.addEventListener('mousemove', e => {
+  if (!state.isDragging || !state.audioBuffer) return;
+  const t = xToTime(e.offsetX);
+  if (state.currentTool !== 'mark') {
+    state.selectionEnd = t;
+    updateSelectionInfo();
+    updateSelectionOverlay();
+  }
+});
+
+waveCanvas.addEventListener('mouseup', () => { state.isDragging = false; });
+waveCanvas.addEventListener('mouseleave', () => { state.isDragging = false; });
+
+// Click to seek (if no drag)
+waveCanvas.addEventListener('click', e => {
+  if (!state.audioBuffer) return;
+  if (Math.abs(e.offsetX - state.dragStartX) < 3 && state.currentTool === 'select') {
+    seekTo(xToTime(e.offsetX));
+    state.selectionStart = null; state.selectionEnd = null;
+    updateSelectionOverlay();
+    updateSelectionInfo();
+  }
+});
+
+// Zoom with wheel
+document.getElementById('waveformPanel').addEventListener('wheel', e => {
+  if (!state.audioBuffer) return;
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? -0.25 : 0.25;
+  state.zoom = Math.max(1, Math.min(state.zoom + delta * state.zoom, 100));
+  const dur = state.audioBuffer.duration;
+  state.viewStart = Math.max(0, Math.min(state.viewStart, dur - dur / state.zoom));
+  drawWaveform(); drawRuler();
+  document.getElementById('statusZoom').textContent = 'Zoom: ' + Math.round(state.zoom * 100) + '%';
+}, { passive: false });
+
+function xToTime(x) {
+  if (!state.audioBuffer) return 0;
+  const dur = state.audioBuffer.duration;
+  const w = document.getElementById('waveformCanvas').offsetWidth;
+  return state.viewStart + (x / w) * (dur / state.zoom);
+}
+
+function timeToX(t) {
+  if (!state.audioBuffer) return 0;
+  const dur = state.audioBuffer.duration;
+  const w = document.getElementById('waveformCanvas').offsetWidth;
+  return ((t - state.viewStart) / (dur / state.zoom)) * w;
+}
+
+function updateSelectionOverlay() {
+  const overlay = document.getElementById('selectionOverlay');
+  if (state.selectionStart === null || state.selectionEnd === null || !state.audioBuffer) {
+    overlay.style.display = 'none'; return;
+  }
+  const s = Math.min(state.selectionStart, state.selectionEnd);
+  const e2 = Math.max(state.selectionStart, state.selectionEnd);
+  const x1 = timeToX(s);
+  const x2 = timeToX(e2);
+  overlay.style.display = '';
+  overlay.style.left = x1 + 'px';
+  overlay.style.width = (x2 - x1) + 'px';
+}
+
+function updateSelectionInfo() {
+  const el = document.getElementById('selectionInfo');
+  if (state.selectionStart === null || state.selectionEnd === null) {
+    el.textContent = 'No selection'; return;
+  }
+  const s = Math.min(state.selectionStart, state.selectionEnd);
+  const e2 = Math.max(state.selectionStart, state.selectionEnd);
+  el.textContent = 'Selection: ' + formatTime(s) + ' → ' + formatTime(e2) + ' (' + formatTime(e2 - s) + ')';
+}
+
+// ===================== PLAYHEAD =====================
+function updatePlayhead() {
+  if (!state.audioBuffer) return;
+  const ph = document.getElementById('playhead');
+  const x = timeToX(state.currentTime);
+  ph.style.left = x + 'px';
+}
+
+// ===================== PLAYBACK =====================
+function togglePlay() {
+  if (!state.audioBuffer) { notify('No file', 'Open an audio file first.'); return; }
+  if (state.isPlaying) pauseAudio();
+  else playAudio();
+}
+
+function playAudio() {
+  const ctx = getAudioCtx();
+  if (ctx.state === 'suspended') ctx.resume();
+
+  if (state.audioSource) { try { state.audioSource.stop(); } catch(e) {} }
+
+  state.gainNode = ctx.createGain();
+  state.gainNode.gain.value = parseFloat(document.getElementById('volumeSlider').value);
+
+  state.analyser = ctx.createAnalyser();
+  state.analyser.fftSize = 2048;
+  state.analyser.smoothingTimeConstant = 0.8;
+
+  state.audioSource = ctx.createBufferSource();
+  state.audioSource.buffer = state.audioBuffer;
+  state.audioSource.connect(state.gainNode);
+  state.gainNode.connect(state.analyser);
+  state.analyser.connect(ctx.destination);
+
+  const offset = state.pausedAt;
+  state.startedAt = ctx.currentTime - offset;
+  state.audioSource.start(0, offset);
+  state.isPlaying = true;
+
+  document.getElementById('playIcon').style.display = 'none';
+  document.getElementById('pauseIcon').style.display = '';
+  setStatus('playing', 'Playing…');
+
+  state.audioSource.onended = () => {
+    if (state.isPlaying) { state.isPlaying = false; state.pausedAt = 0; state.currentTime = 0; updatePlayhead(); showPlayIcon(); setStatus('ready','Playback ended'); }
+  };
+
+  animatePlayhead();
+  drawSpectrum();
+}
+
+function pauseAudio() {
+  if (!state.audioSource) return;
+  const ctx = getAudioCtx();
+  state.pausedAt = ctx.currentTime - state.startedAt;
+  state.audioSource.stop();
+  state.isPlaying = false;
+  showPlayIcon();
+  setStatus('ready', 'Paused');
+  cancelAnimationFrame(state.animFrame);
+}
+
+function showPlayIcon() {
+  document.getElementById('playIcon').style.display = '';
+  document.getElementById('pauseIcon').style.display = 'none';
+}
+
+function animatePlayhead() {
+  if (!state.isPlaying) return;
+  const ctx = getAudioCtx();
+  state.currentTime = ctx.currentTime - state.startedAt;
+  document.getElementById('currentTime').textContent = formatTime(state.currentTime);
+  updatePlayhead();
+
+  // Auto-scroll
+  const dur = state.audioBuffer.duration;
+  const visEnd = state.viewStart + dur / state.zoom;
+  if (state.currentTime > visEnd - 0.5) { state.viewStart = Math.max(0, state.currentTime - 0.5); drawWaveform(); drawRuler(); }
+  state.animFrame = requestAnimationFrame(animatePlayhead);
+}
+
+function seekTo(t) {
+  if (!state.audioBuffer) return;
+  t = Math.max(0, Math.min(t, state.audioBuffer.duration));
+  const wasPlaying = state.isPlaying;
+  if (wasPlaying) pauseAudio();
+  state.pausedAt = t;
+  state.currentTime = t;
+  document.getElementById('currentTime').textContent = formatTime(t);
+  updatePlayhead();
+  if (wasPlaying) playAudio();
+}
+
+function skipToStart() { seekTo(0); }
+function skipToEnd() { seekTo(state.audioBuffer ? state.audioBuffer.duration : 0); }
+function skipBackward() { seekTo(state.currentTime - 5); }
+function skipForward() { seekTo(state.currentTime + 5); }
+function setVolume(v) { if (state.gainNode) state.gainNode.gain.value = v; document.getElementById('volLabel').textContent = Math.round(v * 100) + '%'; }
+
+// ===================== EDITING =====================
+function saveHistory() { if (state.audioBuffer) state.history.push(copyBuffer(state.audioBuffer)); }
+function copyBuffer(buf) {
+  const ctx = getAudioCtx();
+  const nb = ctx.createBuffer(buf.numberOfChannels, buf.length, buf.sampleRate);
+  for (let c = 0; c < buf.numberOfChannels; c++) nb.copyToChannel(buf.getChannelData(c).slice(), c);
+  return nb;
+}
+
+function getSelectionSamples() {
+  if (!state.audioBuffer || state.selectionStart === null || state.selectionEnd === null) return null;
+  const sr = state.audioBuffer.sampleRate;
+  const s = Math.round(Math.min(state.selectionStart, state.selectionEnd) * sr);
+  const e = Math.round(Math.max(state.selectionStart, state.selectionEnd) * sr);
+  if (s >= e) return null;
+  return { start: s, end: e };
+}
+
+function undoAction() {
+  if (!state.history.length) { notify('Nothing to undo', 'No actions to undo.'); return; }
+  state.audioBuffer = state.history.pop();
+  drawWaveform(); drawRuler();
+  notify('Undone', 'Last action reversed.');
+  setStatus('ready', 'Undo applied');
+}
+
+function trimSelection() {
+  const sel = getSelectionSamples();
+  if (!sel) { notify('No selection', 'Make a selection first.'); return; }
+  saveHistory();
+  const ctx = getAudioCtx();
+  const len = sel.end - sel.start;
+  const nb = ctx.createBuffer(state.audioBuffer.numberOfChannels, len, state.audioBuffer.sampleRate);
+  for (let c = 0; c < state.audioBuffer.numberOfChannels; c++) {
+    const old = state.audioBuffer.getChannelData(c);
+    nb.copyToChannel(old.subarray(sel.start, sel.end), c);
+  }
+  state.audioBuffer = nb;
+  state.selectionStart = null; state.selectionEnd = null;
+  updateSelectionOverlay(); updateSelectionInfo();
+  document.getElementById('metaDuration').textContent = formatTime(nb.duration);
+  document.getElementById('totalTime').textContent = formatTime(nb.duration);
+  drawWaveform(); drawRuler();
+  setStatus('ready', 'Trimmed to selection');
+  notify('Trimmed', 'Audio trimmed to selection (' + formatTime(nb.duration) + ').');
+}
+
+function silenceSelection() {
+  const sel = getSelectionSamples();
+  if (!sel) { notify('No selection', 'Make a selection first.'); return; }
+  saveHistory();
+  for (let c = 0; c < state.audioBuffer.numberOfChannels; c++) {
+    const d = state.audioBuffer.getChannelData(c);
+    d.fill(0, sel.start, sel.end);
+  }
+  drawWaveform();
+  notify('Silenced', 'Selection replaced with silence.');
+  setStatus('ready', 'Selection silenced');
+}
+
+function normalizeAudio() {
+  if (!state.audioBuffer) { notify('No file', 'Open a file first.'); return; }
+  saveHistory();
+  let peak = 0;
+  for (let c = 0; c < state.audioBuffer.numberOfChannels; c++) {
+    const d = state.audioBuffer.getChannelData(c);
+    for (let i = 0; i < d.length; i++) if (Math.abs(d[i]) > peak) peak = Math.abs(d[i]);
+  }
+  if (peak === 0) return;
+  const gain = 0.99 / peak;
+  for (let c = 0; c < state.audioBuffer.numberOfChannels; c++) {
+    const d = state.audioBuffer.getChannelData(c);
+    for (let i = 0; i < d.length; i++) d[i] *= gain;
+  }
+  drawWaveform();
+  notify('Normalized', 'Peak level set to -0.1 dBFS.');
+  setStatus('ready', 'Audio normalized');
+}
+
+function reverseAudio() {
+  const sel = getSelectionSamples();
+  if (!state.audioBuffer) return;
+  saveHistory();
+  const start = sel ? sel.start : 0;
+  const end = sel ? sel.end : state.audioBuffer.length;
+  for (let c = 0; c < state.audioBuffer.numberOfChannels; c++) {
+    const d = state.audioBuffer.getChannelData(c);
+    const sub = d.subarray(start, end).slice();
+    sub.reverse();
+    d.set(sub, start);
+  }
+  drawWaveform();
+  notify('Reversed', sel ? 'Selection reversed.' : 'Entire track reversed.');
+  setStatus('ready', 'Audio reversed');
+}
+
+function fadeInSelection() { applyFade('in'); }
+function fadeOutSelection() { applyFade('out'); }
+function applyFade(type) {
+  const sel = getSelectionSamples();
+  if (!sel) { notify('No selection', 'Make a selection first.'); return; }
+  saveHistory();
+  const len = sel.end - sel.start;
+  for (let c = 0; c < state.audioBuffer.numberOfChannels; c++) {
+    const d = state.audioBuffer.getChannelData(c);
+    for (let i = 0; i < len; i++) {
+      const t = i / len;
+      const gain = type === 'in' ? t : 1 - t;
+      d[sel.start + i] *= gain;
+    }
+  }
+  drawWaveform();
+  notify('Fade applied', 'Fade ' + type + ' applied to selection.');
+}
+
+function selectAll() {
+  if (!state.audioBuffer) return;
+  state.selectionStart = 0;
+  state.selectionEnd = state.audioBuffer.duration;
+  updateSelectionOverlay(); updateSelectionInfo();
+}
+
+function clearSelection() {
+  state.selectionStart = null; state.selectionEnd = null;
+  updateSelectionOverlay(); updateSelectionInfo();
+}
+
+// ===================== MARKERS =====================
+function addMarker(t) {
+  const id = Date.now();
+  state.markers.push({ id, time: t, label: 'Marker ' + (state.markers.length + 1) });
+  renderMarkers();
+  notify('Marker added', formatTime(t));
+}
+
+function renderMarkers() {
+  const el = document.getElementById('tab-marks');
+  if (state.markers.length === 0) {
+    el.innerHTML = '<div style="color:var(--color-text-faint); font-size:var(--text-xs); padding: var(--space-4);">No markers yet. Use the Mark tool to add markers.</div>';
+    return;
+  }
+  el.innerHTML = state.markers.map(m => `
+    <div class="mark-item">
+      <div class="mark-dot"></div>
+      <span class="mark-time">${formatTime(m.time)}</span>
+      <span class="mark-label">${m.label}</span>
+      <button class="mark-remove btn-icon" onclick="removeMarker(${m.id})" aria-label="Remove marker">✕</button>
+    </div>`).join('');
+}
+
+function removeMarker(id) {
+  state.markers = state.markers.filter(m => m.id !== id);
+  renderMarkers();
+}
+
+// ===================== SPECTRUM =====================
+function drawSpectrum() {
+  const canvas = document.getElementById('spectrumCanvas');
+  if (!state.analyser || canvas.style.display === 'none') return;
+  const W = canvas.width || canvas.offsetWidth;
+  const H = canvas.height || 120;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const bufLen = state.analyser.frequencyBinCount;
+  const data = new Uint8Array(bufLen);
+  state.analyser.getByteFrequencyData(data);
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = isDark ? '#181716' : '#f9f8f5';
+  ctx.fillRect(0, 0, W, H);
+  const barW = W / bufLen * 2.5;
+  for (let i = 0; i < bufLen; i++) {
+    const h = (data[i] / 255) * H;
+    const pct = i / bufLen;
+    const r = isDark ? Math.round(79 + pct * 100) : 1;
+    const g = isDark ? Math.round(152 - pct * 50) : Math.round(105 + pct * 50);
+    const b = isDark ? Math.round(163 - pct * 80) : 111;
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.fillRect(i * barW, H - h, barW - 1, h);
+  }
+  if (state.isPlaying) state.spectrumFrame = requestAnimationFrame(drawSpectrum);
+}
+
+// ===================== ZOOM =====================
+function zoomIn() {
+  if (!state.audioBuffer) return;
+  state.zoom = Math.min(state.zoom * 1.5, 100);
+  drawWaveform(); drawRuler();
+  document.getElementById('statusZoom').textContent = 'Zoom: ' + Math.round(state.zoom * 100) + '%';
+}
+function zoomOut() {
+  if (!state.audioBuffer) return;
+  state.zoom = Math.max(state.zoom / 1.5, 1);
+  drawWaveform(); drawRuler();
+  document.getElementById('statusZoom').textContent = 'Zoom: ' + Math.round(state.zoom * 100) + '%';
+}
+function zoomFit() {
+  state.zoom = 1; state.viewStart = 0;
+  if (state.audioBuffer) { drawWaveform(); drawRuler(); }
+  document.getElementById('statusZoom').textContent = 'Zoom: 100%';
+}
+
+// ===================== TOOLS =====================
+function setTool(name, btn) {
+  state.currentTool = name;
+  document.querySelectorAll('.sidebar-item[id^=tool-]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('statusTool').textContent = 'Tool: ' + name.charAt(0).toUpperCase() + name.slice(1);
+  const cursors = { select: 'default', trim: 'col-resize', silence: 'crosshair', fade: 'crosshair', mark: 'copy' };
+  document.getElementById('waveformCanvas').style.cursor = cursors[name] || 'default';
+}
+
+// ===================== TABS =====================
+function switchTab(name, btn) {
+  document.querySelectorAll('.fx-tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
+  btn.classList.add('active'); btn.setAttribute('aria-selected', 'true');
+  document.getElementById('tab-effects').classList.remove('active');
+  document.getElementById('tab-marks').classList.remove('active');
+  const specCanvas = document.getElementById('spectrumCanvas');
+  specCanvas.style.display = 'none';
+
+  if (name === 'effects') document.getElementById('tab-effects').classList.add('active');
+  else if (name === 'spectrum') {
+    specCanvas.style.display = 'block';
+    specCanvas.style.padding = 'var(--space-4)';
+    specCanvas.width = specCanvas.offsetWidth;
+    specCanvas.height = 120;
+    if (state.isPlaying) drawSpectrum();
+  }
+  else if (name === 'marks') { document.getElementById('tab-marks').classList.add('active'); renderMarkers(); }
+}
+
+// ===================== FX CONTROLS =====================
+function updateFx(slider, valId, suffix) {
+  document.getElementById(valId).textContent = slider.value + suffix;
+}
+function updateFxRatio(slider) {
+  document.getElementById('ratioVal').textContent = slider.value + ':1';
+}
+function toggleFx(el) {
+  el.classList.toggle('on');
+  el.setAttribute('aria-checked', el.classList.contains('on'));
+}
+
+// ===================== EXPORT =====================
+function openExportModal() {
+  document.getElementById('exportModal').classList.add('open');
+}
+function closeExportModal() {
+  document.getElementById('exportModal').classList.remove('open');
+}
+function doExport() {
+  if (!state.audioBuffer) { notify('No file', 'Load an audio file first.'); closeExportModal(); return; }
+  closeExportModal();
+  // WAV export via AudioBuffer → PCM
+  const buf = state.audioBuffer;
+  const len = buf.length;
+  const nch = buf.numberOfChannels;
+  const sr = buf.sampleRate;
+  const pcmData = new Float32Array(len * nch);
+  for (let i = 0; i < len; i++) {
+    for (let c = 0; c < nch; c++) pcmData[i * nch + c] = buf.getChannelData(c)[i];
+  }
+  const wav = encodeWav(pcmData, nch, sr);
+  const blob = new Blob([wav], { type: 'audio/wav' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = (state.fileName ? state.fileName.replace(/\.[^.]+$/, '') : 'audio') + '_edited.wav';
+  a.click(); URL.revokeObjectURL(url);
+  notify('Export complete', 'File saved as WAV.');
+}
+
+function encodeWav(samples, numChannels, sampleRate) {
+  const buf = new ArrayBuffer(44 + samples.length * 2);
+  const view = new DataView(buf);
+  function ws(off, str) { for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i)); }
+  ws(0, 'RIFF'); view.setUint32(4, 36 + samples.length * 2, true);
+  ws(8, 'WAVE'); ws(12, 'fmt ');
+  view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * numChannels * 2, true);
+  view.setUint16(32, numChannels * 2, true); view.setUint16(34, 16, true);
+  ws(36, 'data'); view.setUint32(40, samples.length * 2, true);
+  for (let i = 0; i < samples.length; i++) {
+    const s = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+  }
+  return buf;
+}
+
+// ===================== UTILS =====================
+function formatTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  const ms = Math.floor((s % 1) * 1000);
+  return m.toString().padStart(2, '0') + ':' + sec.toString().padStart(2, '0') + '.' + ms.toString().padStart(3, '0');
+}
+
+function setStatus(type, msg) {
+  document.getElementById('statusText').textContent = msg;
+  const dot = document.getElementById('statusDot');
+  const colors = { loading: 'var(--color-warning)', playing: 'var(--color-primary)', ready: 'var(--color-success)', error: 'var(--color-error)' };
+  dot.style.background = colors[type] || 'var(--color-text-faint)';
+}
+
+let notifTimer;
+function notify(title, msg) {
+  const el = document.getElementById('notif');
+  document.getElementById('notifTitle').textContent = title;
+  document.getElementById('notifMsg').textContent = msg;
+  el.classList.add('show');
+  clearTimeout(notifTimer);
+  notifTimer = setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+// ===================== THEME TOGGLE =====================
+(function() {
+  const t = document.querySelector('[data-theme-toggle]');
+  const r = document.documentElement;
+  let d = 'dark'; // Default dark for audio editor
+  r.setAttribute('data-theme', d);
+  t && t.addEventListener('click', () => {
+    d = d === 'dark' ? 'light' : 'dark';
+    r.setAttribute('data-theme', d);
+    t.setAttribute('aria-label', 'Switch to ' + (d === 'dark' ? 'light' : 'dark') + ' mode');
+    t.innerHTML = d === 'dark'
+      ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
+      : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>';
+    if (state.audioBuffer) { drawWaveform(); drawRuler(); }
+  });
+})();
+
+// ===================== RESIZE =====================
+window.addEventListener('resize', () => {
+  if (state.audioBuffer) { drawWaveform(); drawRuler(); }
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+  if (e.code === 'KeyZ' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); undoAction(); }
+  if (e.code === 'KeyA' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); selectAll(); }
+  if (e.code === 'Escape') clearSelection();
+  if (e.code === 'KeyT') setTool('trim', document.getElementById('tool-trim'));
+  if (e.code === 'KeyS' && !e.ctrlKey) setTool('select', document.getElementById('tool-select'));
+  if (e.code === 'KeyM') setTool('mark', document.getElementById('tool-mark'));
+});
+
+// Init empty markers
+renderMarkers();
+</script>
+</body>
+</html>
